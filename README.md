@@ -45,7 +45,7 @@
 #### RMSE:
         formula and explanation
         
-        noise clean-up
+        noise clean-up ( image here is for illustrative purposes, but the idea for this project is the same)
 ![noise visually explained](https://github.com/ted2020/MovieLens-Recommender-Systems/blob/master/noise_explained.png)
     
         

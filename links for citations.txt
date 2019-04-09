@@ -1,0 +1,39 @@
+#regularization explained
+#https://towardsdatascience.com/regularization-in-machine-learning-76441ddcf99a
+#https://www.quora.com/What-is-regularization-in-machine-learning
+#https://codeburst.io/what-is-regularization-in-machine-learning-aed5a1c36590
+
+#scaling
+#https://medium.com/greyatom/why-how-and-when-to-scale-your-features-4b30ab09db5e
+
+#date values
+#https://www.statmethods.net/input/dates.html
+
+#Most popular movie genres in North America from 1995 to 2019
+#https://www.statista.com/statistics/188658/movie-genres-in-north-america-by-box-office-revenue-since-1995/
+
+#1980s cutoff
+#https://historycooperative.org/the-history-of-the-hollywood-movie-industry/
+
+# Introduction to Machine Learning by Rafael A. Irizarry
+#https://rafalab.github.io/dsbook/introduction-to-machine-learning.html
+
+
+# noise explained
+#https://www.kdd.org/exploration_files/v12-1-p33-namatag-sigkdd.pdf
+
+
+# bu and bi
+#http://cs229.stanford.edu/proj2013/Bystrom-MovieRecommendationsFromUserRatings.pdf
+
+# link for the dataset
+#http://files.grouplens.org/datasets/movielens/ml-10m-README.html
+
+#Solving the Sparsity Problem in Recommender. Systems Using Association Retrieval
+#https://pdfs.semanticscholar.org/0b91/5f2a711b1e2696563b0e148c5805d72b0148.pdf
+
+#Implicit ratings and item based filtering
+#http://guidetodatamining.com/assets/guideChapters/DataMining-ch3.pdf
+
+# About Train, Validation and Test Sets in Machine Learning
+#https://towardsdatascience.com/train-validation-and-test-sets-72cb40cba9e7

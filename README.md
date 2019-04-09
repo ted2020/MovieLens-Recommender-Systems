@@ -46,7 +46,7 @@
         formula and explanation
         
         noise clean-up
-        ![noise visual](https://github.com/ted2020/MovieLens-Recommender-Systems/blob/master/noise_explained.png)
+        ![noise_visual](https://github.com/ted2020/MovieLens-Recommender-Systems/blob/master/noise_explained.png)
         
         algorithm
         graphs

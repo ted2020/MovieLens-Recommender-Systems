@@ -32,24 +32,37 @@
         ratings by release year and rate year (defined below)
         mean ratings of each genre
         visual inspection vs data: which genre to produce?
-        corr
+        what week day the most people go to and mean rating is higher? (Quora Thread)
+        correlation outputs and inference
 
 #### Visualization part includes:
         rating distribution
         genres rating distribution
         rate year rating distribution
         release year rating distribution (observed two clusters: 1980 dropoff point)
-        user count rate distribution (test and train set) (log2)        
-        movie count rate distribution (test and train set) (log2)
+        user count rate distribution (log2)        
+        movie count rate distribution (log2)
 
 #### RMSE:
-        formula and explanation
+        formula and intuition
         
         noise clean-up ( image here is for illustrative purposes, but the idea for this project is the same)
 ![noise visually explained](https://github.com/ted2020/MovieLens-Recommender-Systems/blob/master/noise_explained.png)
     
         
         algorithm
+            n()
+            plyr
+            ridge and lasso
+            ranger
+            regularization
+            kmeans
+            svm
+            xgboost
+            randomforest
+            slope one
+            sparse matrix
+            OLS and GLS
         graphs
         
 #### Please see the links file for the resources I used.

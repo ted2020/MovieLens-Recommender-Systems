@@ -15,13 +15,22 @@
 
 #### Before I dive in, let's see some details of the project provided by Movielens. > link to  __[Movielens 10M Data Description](http://files.grouplens.org/datasets/movielens/ml-10m-README.html)__
 
+#### <font color=blue>release year</font> refers to the release date of the movie and the ratings by release reflect the rates the movie received by that year, on average
+
+####  <font color=blue>rate year</font> refers to when rates are collected 
+
+####  <font color=blue>rate_release_dif</font> refers to the span of rating collection (rate year - release year), which can range from years to decades
+
+####  <font color=blue>age_of_movie</font> refers to how old the movie is. It is calculated as this year minus the release year of the movie
+
 #### Data Prep:
         The data didn't require cleaning.
         After checking possible missing values, time frame anomalies, and seeing whether the data is intact,
-        I converted timestamps into dates, separated genres, and extracted the movie release years. 
-        By doing so, I was able to compare the rate year vs release year rating differences and user voting frequency.
+        I converted timestamps into dates, separated genres, and extracted the movie release years and rate years. 
+        I also created weekday and age_of_movie and rate_month variables to grasp the dataset better.
+        By doing so, I was able to compare the rate year vs release year rating differences and user voting frequency and on.
 
-#### Other exploratory data analyses I've done are: 
+#### Exploratory Data Analysis: 
         seeing distinct values 
         how old a movie is and for how long reviews being collected
         count of genres listed 
@@ -29,8 +38,8 @@
         top 20 movies with highest number of ratings 
         ratings given from most to least and their proportions
         movie genre count by year and by count order
-        ratings by release year and rate year (defined below)
-        mean ratings of each genre
+        ratings by release year and rate year (defined above)
+        mean ratings of each genre and standard deviations
         visual inspection vs data: which genre to produce?
         what week day the most people go to and mean rating is higher? (Quora Thread)
         correlation outputs and inference

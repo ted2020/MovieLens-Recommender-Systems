@@ -61,6 +61,7 @@
                 "The History of the Hollywood Movie Industry"
         user count rate distribution  (log2)        
         movie count rate distribution (log2)
+		industry-wide movie boom just before tech-boom
 
 #### RMSE:
         formula and explanation

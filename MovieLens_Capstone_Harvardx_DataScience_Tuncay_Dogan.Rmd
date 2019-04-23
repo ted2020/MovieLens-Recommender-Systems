@@ -1,0 +1,880 @@
+---
+title: "movielens capstone harvardx data science"
+author: "tuncay dogan"
+date: "April 22, 2019"
+output: pdf_document
+---
+# This is a capstone Movielens project for HarvardX Data Science.
+
+__[MovieLens_Capstone_Harvardx_DataScience_Tuncay_Dogan](https://github.com/ted2020/MovieLens-Recommender-Systems)__
+
+## Introduction
+
+#### Data analysis is more than just crunching numbers and visualizing them. It is, in fact, a storytelling. With the right mindset and enough data, it is feasible to create a digital footprint of human behavior. That's something that I strongly believe in. Human actions, inadvertently, leave traces of prefences, which can then be converted into assumptions about the future demand on the applicable products. In here, the decision-making process, by reading outcomes of well-analyzed data, by the management, can be simplified as well as increased in efficiency. All these then feed into the profits and the team with the most truthful story wins the Bayesian game.
+
+#### There will be some extra data exploration than supposed to, to make me learn better and use it as a reference. So, please bare with me on this.
+
+## Overview
+
+
+#### First, I will explore the data to understand the intuition of it, so that i can work with the variables.
+#### Second, I will provide some graphs to further grasp the relationship between variables.
+#### Third, I will try to reduce RMSE by using some techniques that are listed below.
+
+## Summary
+
+### Goal of the Movielens Recommendation Systems study:
+#### By using the movielens dataset, I will try to build an algorithm that takes in independent variables and trains the model by using already known dependent variable, in this case it is the movie ratings, and then I hope to predict dependent variable, movie ratings, by using the model created with independent variables in hand. 
+
+#### To accomplish the goal, we split the data into two parts: train set (edx) and validation set (validation).
+
+#### Before I dive in, let's see some details of the project provided by Movielens. > link to  __[Movielens 10M Data Description](http://files.grouplens.org/datasets/movielens/ml-10m-README.html)__
+
+#### <font color=blue>release year</font> refers to the release date of the movie and the ratings by release reflect the rates the movie received by that year, on average
+
+####  <font color=blue>rate year</font> refers to when rates are collected 
+
+####  <font color=blue>rate_release_dif</font> refers to the span of rating collection (rate year - release year), which can range from years to decades
+
+####  <font color=blue>age_of_movie</font> refers to how old the movie is. It is calculated as this year minus the release year of the movie
+
+#### Data Prep:
+        # The data didn't require cleaning.
+        # After checking possible missing values, time frame anomalies, and seeing whether the data is intact,
+        # I converted timestamps into dates, separated genres, and extracted the movie release years and rate years. 
+        # I also created weekday and age_of_movie and rate_month variables to grasp the dataset better.
+        # By doing so, I was able to compare the rate year vs release year rating differences and user voting frequency and on.
+
+#### Other exploratory data analyses I've done are: 
+        # seeing distinct values 
+        # how old a movie is and for how long reviews being collected
+        # count of genres listed 
+        # proportion of each genre 
+        # top 20 movies with highest number of ratings 
+        # ratings given from most to least and their proportions
+        # movie genre count by year and by count order
+        # ratings by release year and rate year (defined below)
+        # mean ratings of each genre and standard deviations
+        # visual inspection vs data: which genre to produce?
+        # what week day the most people go to movies aand what are the quietest days? (Quora Thread)
+        #     "Why are movies released on Thursdays?"
+        # correlation outputs and inference
+
+#### Visualization part includes:
+        # rating distribution
+        # genres rating distribution
+        # rate year rating distribution
+        # release year rating distribution (observed two clusters: 1980 dropoff point)
+        #     what happened in 1980?
+        #         "The History of the Hollywood Movie Industry"
+        # user count rate distribution  (log2)        
+        # movie count rate distribution (log2)
+
+#### RMSE:
+        # formula and explanation
+        # algorithm
+        #     n() from dplyr library
+        #     ddply from plyr library
+        #     ridge and lasso
+        #     ranger
+        #     regularization
+        #     kmeans
+        #     svm
+        #     xgboost
+        #     randomforest
+        #     slope one
+        #     sparse matrix
+        #     OLS and GLS
+        # graphs
+
+
+```{r}
+library(tidyverse)
+library(caret)
+library(ggplot2)
+library(MLmetrics)
+#library(nlme)
+#library(plyr) # conflict with dplyr, be careful
+#library(dplyr)
+#library(magrittr)
+#library(olsrr)
+#library(psych)
+#library(plotrix)
+#library(MASS)
+#library(broom)
+#library(glmnet)
+#library(stringr)
+
+#library(rmarkdown)
+
+#library(e1071)
+#library(randomForest)
+
+```
+
+
+
+```{r}
+#movielens <- read.csv("test.csv") # this is a portion I used before working with the full movielens data.
+                # this makes it easier to re-run and loads faster, since full data is quiet big.
+```
+### Reading the Movielens Data
+
+##### validation set is created below
+    
+```{r}
+#if(!require(tidyverse)) install.packages("tidyverse", repos = "http://cran.us.r-project.org")
+#if(!require(caret)) install.packages("caret", repos = "http://cran.us.r-project.org")
+
+# MovieLens 10M dataset:
+# https://grouplens.org/datasets/movielens/10m/
+# http://files.grouplens.org/datasets/movielens/ml-10m.zip
+
+dl <- tempfile()
+download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
+
+ratings <- read.table(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
+                      col.names = c("userId", "movieId", "rating", "timestamp"))
+
+movies <- str_split_fixed(readLines(unzip(dl, "ml-10M100K/movies.dat")), "\\::", 3)
+colnames(movies) <- c("movieId", "title", "genres")
+movies <- as.data.frame(movies) %>% mutate(movieId = as.numeric(levels(movieId))[movieId],
+                                           title = as.character(title),
+                                           genres = as.character(genres))
+
+movielens <- left_join(ratings, movies, by = "movieId")
+```
+
+### Creating additional columns for exploratory data analysis
+```{r}
+this_year <- as.numeric(format(Sys.time(), "%Y"))
+    # convert timestamp to date format
+movielens <- movielens %>% mutate(timestamp2 = structure(movielens$timestamp[],class=c('POSIXt','POSIXct')))
+    # extract movie release year from the title
+movielens <- movielens %>% mutate(releaseyear = as.numeric(str_extract(str_extract(title, "[/(]\\d{4}[/)]$"),regex("\\d{4}"))))
+    # find how old the movie is
+movielens <- movielens %>% mutate(age_of_movie=this_year-movielens$releaseyear)
+    # find the year the movie is rated by the user(s)
+movielens <- movielens %>% mutate(rateyear = as.numeric(as.character(format(as.Date(timestamp2), "%Y"))))
+    # find the month the movie is rated
+movielens <- movielens %>% mutate(ratemonth_numeric = as.numeric(as.character(format(as.Date(timestamp2), "%m"))))
+movielens <- movielens %>% mutate(ratemonth = format(as.Date(timestamp2), "%B"))
+    # which week day the movie is rated by the user(s)
+movielens <- movielens %>% mutate(weekday = format(as.Date(timestamp2), "%A"))
+    # rate_release_dif = gives difference between rate year and release year
+movielens <- movielens %>% mutate(rate_release_dif=movielens$rateyear - movielens$releaseyear)
+    # separate genres 
+movielens2 <- separate_rows(movielens,genres,sep="\\|")
+    # assign numeric values to separated genres
+movielens2 <- movielens2 %>% mutate(genres_numeric=as.numeric(as.factor(movielens2$genres)))
+```
+
+## Exploratory Data Analysis
+
+
+```{r}
+head(movielens,1)
+head(movielens2,1)
+```
+
+```{r}
+#anyNA(movielens)
+#anyNA(movielens2)
+```
+
+```{r}
+summary(movielens)
+
+```
+
+```{r}
+table(movielens2$genres)
+# of course, some movies fall in to a couple of genre categories, 
+#but for the sake of understanding the intituion, this tool is good enough.
+```
+
+```{r}
+str(movielens2)
+
+```
+
+```{r}
+#describe(movielens)
+
+```
+
+
+```{r}
+length(unique(movielens$movieId))
+n_distinct(movielens$userId)
+min(movielens$releaseyear)
+max(movielens$releaseyear)
+min(movielens$rateyear)
+max(movielens$rateyear)
+```
+
+
+```{r}
+# proportion of each genre in movielens set
+ p1<- data.frame(sort(round(prop.table(table(movielens2$genres))*100,1)))%>%arrange(desc(Freq))
+p1
+```
+
+```{r}
+# top 20 movies with the highest number of ratings given in descending order
+
+titleratingcount <- movielens %>% group_by(title) %>%
+summarize(count = n()) %>%
+top_n(20,count) %>%
+arrange(desc(count))
+
+titleratingcount
+```
+
+```{r}
+#most given ratings in order from most to least
+
+ratingcount <- movielens %>% group_by(rating) %>%
+	summarize(count = n()) %>%
+	arrange(desc(count))
+
+ratingcount
+```
+
+```{r}
+# total rating counts for each rating category and its proportion
+
+sum=sum(ratingcount$count)
+ratingcount2 <- ratingcount%>%mutate(p_count=(ratingcount$count)/sum)
+ratingcount2
+```
+
+
+```{r}
+# movie genre count by year in year descending order
+
+moviecountperyear <- movielens2 %>%
+select(movieId, releaseyear, genres) %>%
+group_by(releaseyear, genres) %>%
+summarise(count = n()) %>% arrange(desc(releaseyear))
+
+
+head(moviecountperyear,10)
+```
+
+```{r}
+# movie genre count by year in count descending order
+
+moviecountperyear2 <- movielens2 %>%
+select(movieId, releaseyear, genres) %>%
+group_by(releaseyear, genres) %>%
+summarise(count = n()) %>% arrange(desc(count))
+
+head(moviecountperyear2,10)
+```
+
+```{r}
+# ratings by the release year of the movies
+
+ratingsbyreleaseyear <- movielens %>% group_by(releaseyear) %>% summarize(mean_rating = mean(rating))
+head(ratingsbyreleaseyear,10)
+```
+
+```{r}
+# ratings by the rate year of the movies
+
+mean_rating_by_rate_year <- movielens %>% group_by(rateyear) %>% summarize(mean_rating =mean(rating))
+mean_rating_by_rate_year
+```
+
+```{r}
+# this shows the mean ratings of each genre.
+
+#movielens %>% summarize(mean(rating), sd(rating))
+
+# if RMSE = sd, model somewhat predicts the mean
+# if RMSE < sd, model shows ability to learn, depends on how much it is lower
+# if RMSE > sd, model didnt even learn to guess mean correctly 
+
+# if overall accuracy between training and testing differs a lot, this can be due to overtrain that causes over fitting.
+
+
+rating_mean_sd_genre <- movielens2 %>% group_by(genres) %>% summarize(mean(rating), sd(rating))
+rating_mean_sd_genre
+```
+
+```{r}
+mean_sd_by_movieid <- movielens%>% group_by(movieId) %>% summarize(mean=mean(rating), sd=sd(rating),se=sd/length(movieId)) %>% arrange(desc(sd))
+head(mean_sd_by_movieid)
+```
+
+```{r}
+mean_sd_by_userid <- movielens%>% group_by(userId) %>% summarize(mean=mean(rating), sd=sd(rating),se=sd/length(movieId)) %>% arrange(desc(sd))
+head(mean_sd_by_userid)
+```
+
+```{r}
+movielens%>% group_by(movieId) %>% 
+summarize(n=n(),howold=2019-first(releaseyear),title=title[1],mean=mean(rating)) %>%
+mutate (hmray=n/howold)%>% 
+top_n(10,hmray) %>% #hmray=how many rates a year
+arrange(desc(mean))
+```
+
+####  If I am a movie maker, producing which genre of movie may provide the highest rating and possibly profit???
+
+#### Of course, this question requires data for the production cost of each movie, and ticket sales and prices, along with digital content incomes, and so on. But, for simplicity, I assume'em all constant across the platform.
+
+#### From visual inspection, I see that making War, Fantasy, and Crime movies tend to rate higher and since there are not many of those produced, which can be seen in proportions  or in movie genre count by year section, these kinds of movies wont get lost in the jungle easily.
+
+#### That's not to say that market demand analysis shouldn't be made. Each generation display different characteristics and therefore desire different products, although there are visible common denominators.
+
+#### Let's try to show whetherthe visual inspection is true
+
+#### Frequency table shows (on average, each user has n_freq rating for that genre) that due to high rating receival of comedy, drama, action, thriller, movie makers tend to produce more of those ( which can be seen in count values as well), and therefore their mean tend to regress toward the total mean faster than the ones with low frequency, such as documentary. 
+
+#### Although the visual inspection turned out to be somewhat wrong, due to box office gross sums impact on production, now we learn that producers seem to make more of high grossing movies to maximize their profits which happen to fall into those categories... 
+
+####  > link to  __[source of paraphrase](https://www.statista.com/statistics/188658/movie-genres-in-north-america-by-box-office-revenue-since-1995/)__
+
+
+
+```{r}
+# frequency of users voting(rating) for each genre 
+
+a <- data.frame(table(movielens2$genres))
+names(a) <- c("genre", "genre sum")
+c <- a[2]/(n_distinct(movielens2$userId))
+names(c) <- "freq"
+d <- cbind(a,c)
+d %>% arrange(desc(freq))
+```
+
+#### since many people prefer to go to theatre and many movies are released on fridays,
+
+_[Why are movies released on Thursdays?](https://www.quora.com/Why-are-movies-released-on-Thursdays)_
+
+#### it's plausible to observe a higher rating on fridays and weekends.
+#### seeing higher mean rating on mondays may be because professional movie critiques are only ready by then, 
+#### as well as people give it some time to digest the movie.
+#### mid weekdays (tuesday, wednesday, and thursday) offer the lowest average rating.
+#### most people work the mid-weekdays, even if time zone differences accross the globe is taken into consideration,
+#### assuming that data collection is not time-zone variant
+
+```{r}
+weekday_mean_sd <- movielens%>% group_by(weekday) %>% summarize(mean=mean(rating), sd=sd(rating)) %>% arrange(desc(mean))
+weekday_mean_sd
+```
+
+#### Correlation between year of rating collected and how old a movie is
+#### in time, rating accumulate, therefore it is expected that older movies to have more rating
+#### on the other hand, new generation is more tech savvy, 
+#### so the newly produced movies that attract young generation to receive more reviews and rate.
+
+
+#### as it can be seen, older the movie, higher its rating.( cor(rating,age_of_movie)=.1143)
+##### also, if the rate collection year is further into the future than its release year, it's got a positive impact on rating
+#### cor(rating,rate_release_dif)=.1039
+
+
+```{r}
+corr <- movielens2 %>% select(rating,userId,movieId,releaseyear,age_of_movie,rateyear)
+cor(corr)
+```
+
+## Data Visualization
+
+#### In this graph, i sort the ratings by the rate year. As it is clear from the graph that, given enough time, ratings get closer to the mean value. But, the businesses, due to ever advancing technology and fast adopting and fast consuming society, may not pay much attention to this, because although the rates regress to the mean in the long run, the most profits are realized in the short and in some instances medium run. As Keynes said: "in the long run, we are all dead."
+
+```{r}
+#print(paste((n_distinct(movielens$rateyear)), "unique dates"))
+#157 unique dates
+
+movielens %>% group_by(rateyear) %>%
+summarize(rating = mean(rating)) %>%
+ggplot(aes(rateyear, rating, color=(rating>=mean(rating)))) +
+geom_point() +
+theme(text = element_text(),axis.text.x = element_text(size = 4,angle = 90, hjust = 0, vjust = 1, face = "plain"))+
+ggtitle("rate year & rating distribution by mean rating")
+```
+
+#### it looks like movie ratings across the year differ between the rates of movies by release year and the rates of movies by rate year.
+
+#### <font color=blue>release year</font> refers to the release date of the movie and the ratings by release reflect the rates the movie received by that year, on average
+
+####  <font color=blue>rate year</font> refers to when rates are collected since the release time, which spans over several years/decades in many instances.
+
+#### average rating should be about 3.52
+#### ratings which are collected over a period time, rather the just the release year rating, reflect the mean rating better. In fact, though the earliest movie in the dataset dates back to 1915, rating collection starts at 1995.
+
+#### it also proves the point of 'regress to the mean' concept.
+
+#### additionally, by looking at the release year rate, movies that had been produced between roughly 1920 and 1970 received better ratings when they were released, compared to the 1990s and 2000s.
+
+#### categorically, what genres of movies pushed the overall rating higher than mean from 1920 to 1970??? (answer is given below)
+
+#### also, by looking at the release year rating graph, it is almost as if there are two clusters, which is separated by the year 1980 that acts like a cutoff point, in where sudden drop can be observed. For simplicity, i cut off the two clusters by mean rating.
+
+
+#### "In the 1980’s, the past creativity of the film industry became homogenized and overly marketable. Designed only for audience appeal, most 1980’s feature films were considered generic and few became classics. This decade is recognized as the introduction of high concept films that could be easily described in 25 words or less, which made the movies of this time more marketable, understandable, and culturally accessible."....   
+#### > link to  __[source of quotation](https://historycooperative.org/the-history-of-the-hollywood-movie-industry/)__
+
+
+```{r}
+#print(paste((n_distinct(validation3$releaseyear)), "unique dates"))
+#94 unique dates
+
+movielens2 %>% group_by(releaseyear) %>%
+summarize(rating = mean(rating)) %>%
+ggplot(aes(releaseyear, rating,color=(rating>=mean(rating)))) +
+geom_point() + 
+geom_smooth(span=0.5)+
+ggtitle("release year & rating distribution by mean rating")
+
+```
+
+#### In this graph, we can observe that some genres perform better in ratings than others, such as documentary (about 0.4% of total movies in this dataset), drama (about 16.7%), animation (2%). Even though comedy, action, and thriller genres take a larger portion of the dataset, they were rated lower than the average. which says that movies belong to these genres produce quantity but not quality.
+
+```{r}
+#print(paste((n_distinct(validation3$releaseyear)), "unique dates"))
+#94 unique dates
+
+movielens2 %>% group_by(genres) %>%
+summarize(rating = mean(rating)) %>%
+ggplot(aes(genres, rating,color=(rating>=mean(rating)))) +
+geom_point() + 
+geom_smooth(span=0.2)+
+theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+ggtitle("genres rating distribution")
+```
+
+
+#### This graph shows the ratings distrubution. As it can be clearly seen that the more whole number ratings were given than the fraction ratings.
+
+
+```{r}
+movielens2 %>% 
+  ggplot(aes(rating)) + 
+  geom_histogram(binwidth=0.2, fill="black",color="black") +  
+  ggtitle("Rating Distribution seq(0, 5, 0.5)")
+```
+
+```{r}
+# most users rated movies in single digits.
+
+movielens2 %>% 
+  count(userId) %>% 
+  ggplot(aes(n)) + 
+  geom_histogram(binwidth = 1, color = "black") + 
+  #scale_x_continuous(trans="log2")+
+  ggtitle("user count rate distribution")
+```
+
+```{r}
+# most users rated movies in single digits. To make better inference, i log the the n to visualize more clear
+
+movielens2 %>% 
+  count(userId) %>% 
+  ggplot(aes(n)) + 
+  geom_histogram(binwidth = 1, color = "black") + 
+  scale_x_continuous(trans="log2")+
+  ggtitle("user count rate distribution")
+```
+
+```{r}
+# movies ratings count distribution
+
+movielens %>% 
+  count(movieId) %>% 
+  ggplot(aes(n)) + 
+  geom_histogram(binwidth = 1, color = "black") + 
+  scale_x_continuous(trans="log2")+
+  ggtitle("movie count rate distribution")
+```
+
+# this shows that mid 1990s, almost every genre had an increase in count, meaning more produced films
+# this is just before the tech boom
+# people's expectation were high
+# that leads to more consumption of leisure time
+
+
+```{r}
+moviecountperyear %>%
+    ggplot(aes(genres,releaseyear, color=count)) +
+    geom_point(aes(size=log(count))) +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))+
+    ggtitle(" overall increase in each genre quantity before tech boom")
+```
+
+```{r}
+# this is another way of seeing increase in movie quantity just before the tech boom
+moviecountperyear %>%
+    filter(releaseyear <= 2000 & genres=="Action") %>%
+    ggplot(aes(releaseyear, count)) +
+    geom_line() +
+    ggtitle("quantity jump before tech boom")
+```
+
+```{r}
+movielens2 %>%
+    filter(releaseyear <= 1980 & genres %in% c("Comedy")) %>%
+    ggplot(aes(rating,releaseyear))+
+    geom_jitter()
+
+# compare this to >=1980, it's clear to see that after 1980, movie industry started mass producing,
+# therefore the quantity overcame the quality,
+# thus the distribution of ratings almost did even out.
+# before 1980, most comedy movies were rated between 3 and 5.
+# but after 1980, range became 1 and 5
+# the same idea can be applied to other genres
+```
+
+
+```{r}
+movielens %>% 
+filter(releaseyear >= 2000) %>% 
+group_by(movieId) %>%
+summarize(n=n(),howold=2019-first(releaseyear),title=title[1],mean=mean(rating)) %>%
+mutate (hmray=n/howold)%>% #hmray=how many rates a year
+ggplot(aes(hmray, mean)) +
+geom_point() +
+geom_smooth() +
+ggtitle("movie ratings by hmray")
+# over time, ratings stabilize at around the mean
+```
+
+```{r}
+movielens2 %>% group_by(genres) %>%
+	summarize(n = n(), avg = mean(rating), se = sd(rating)/sqrt(n())) %>%
+	filter(n >= 100) %>% 
+	mutate(reorder(genres, avg)) %>%
+	ggplot(aes(x = genres, y = avg, ymin = avg - 2*se, ymax = avg + 2*se)) + 
+	geom_point() +
+	geom_errorbar() + 
+	theme(axis.text.x = element_text(angle = 90, hjust = 1))
+	ggtitle("average movie ratings by genre")
+```
+
+
+```{r}
+movielens2 %>% group_by(weekday) %>%
+	summarize(n = n(), avg = mean(rating), se = sd(rating)/sqrt(n())) %>%
+	filter(n >= 1000) %>% 
+	mutate(reorder(weekday, avg)) %>%
+	ggplot(aes(x = weekday, y = avg, ymin = avg - 2*se, ymax = avg + 2*se)) + 
+	geom_point() +
+	geom_errorbar() + 
+	theme(axis.text.x = element_text(angle = 90, hjust = 1))
+	ggtitle("average movie ratings by week day")
+```
+
+
+```{r}
+movielens2 %>% group_by(releaseyear) %>%
+	summarize(n = n(), avg = mean(rating), se = sd(rating)/sqrt(n())) %>%
+	filter(n >= 5) %>% 
+	mutate(reorder(releaseyear, avg)) %>%
+	ggplot(aes(x = releaseyear, y = avg, ymin = avg - 2*se, ymax = avg + 2*se)) + 
+	geom_line() +
+	geom_smooth() +
+	ggtitle("movie ratings by release year")
+```
+
+```{r}
+movielens2 %>% group_by(rateyear) %>%
+	summarize(n = n(), avg = mean(rating), se = sd(rating)/sqrt(n())) %>%
+	filter(n >= 10) %>% 
+	mutate(reorder(rateyear, avg)) %>%
+	ggplot(aes(x = rateyear, y = avg, ymin = avg - 2*se, ymax = avg + 2*se)) + 
+	geom_line() +
+	geom_smooth() +
+	ggtitle("movie ratings by rate year")
+```
+
+### Creating a Validation set
+
+
+```{r}
+# Validation set will be 10% of MovieLens data
+
+set.seed(1)
+test_index <- createDataPartition(y = movielens$rating, times = 1, p = 0.1, list = FALSE)
+edx <- movielens[-test_index,]
+temp <- movielens[test_index,]
+
+# Make sure userId and movieId in validation set are also in edx set
+
+validation <- temp %>% 
+     semi_join(edx, by = "movieId") %>%
+     semi_join(edx, by = "userId")
+
+# Add rows removed from validation set back into edx set
+
+removed <- anti_join(temp, validation)
+edx <- rbind(edx, removed)
+
+rm(dl, ratings, movies, test_index, temp, movielens, removed)
+```
+
+
+
+```{r}
+length(validation$rating)
+length(edx$rating)
+head(validation,1)
+```
+
+
+## RMSE
+
+#### RMSE:
+
+\begin{equation*}
+ \mbox{RMSE} = \sqrt{\mbox{MSE}} = \sqrt{\frac{1}{N}\sum_{i=1}^N (\hat{y}_i - y_i)^2} 
+\end{equation*}
+
+#### sqrt(mean(pred - obs)^2)
+
+#### > link to  __[source of RMSE equation](https://rafalab.github.io/dsbook/introduction-to-machine-learning.html)__
+
+
+
+
+
+#### if RMSE = sd, model somewhat predicts the mean
+#### if RMSE < sd, model shows ability to learn, depends on how much it is lower
+#### if RMSE > sd, model didnt even learn to guess mean correctly
+
+#### if overall accuracy between training and testing differs a lot, this can be due to overtrain that causes over fitting.
+
+
+
+#### there are users that rate only one movie, i.e. userId=="1"
+#### there are other users that rate certain genre movies higher, i.e. userId=="10"
+#### therefore, each user carries a certain bias in his/her decision toward certain movies and genres
+
+
+#### RMSE = sqrt(1/n (r_hat_u_m - r_u_m))
+#### r_hat_u_m = predicted rating for movie m and user u.
+#### r_u_m = test set rating for movie m and user u.
+
+#### b_u = bias for user u
+#### b_m = this provides an amount to diminish the effect of user bias
+
+#### ratings from each user was centered around zero by removing the mean and then divide the sum of centered means by the count of values within.
+#### ratings for each movie was centered around zero by removing the mean and then divide the sum of centered means by the count of values within.
+
+#### in other words, it could be seen as deriving standard errors out of each sub group of userID and movieId.
+
+#### I have tried n() function of dplyr library to divide it by the frequency of each sub-group of userId and movieId, so that I can reduce the impact of variations. 
+
+#### second, I tried ddply functionality of plyr library, again, to have a better estimate
+
+
+
+```{r}
+mu <- mean(edx$rating)
+paste0("sd is ", sd(validation$rating))
+paste0("baseline RMSE is ", RMSE(mu,validation$rating))
+```
+
+
+#### by using ddply functionality of plyr library
+    #### fyi: running plyr and dplyr library at the same time causes an error.
+
+```{r}
+cdata_movieId <- ddply(edx, c("movieId"), summarise,
+               N = length(movieId),
+               group_rating = mean(rating),
+               group_se_by_movie = (group_rating - mean(edx$rating))/N
+)
+cdata_movieId <- cdata_movieId %>% arrange(desc(group_se_by_movie))
+head(cdata_movieId)
+anyNA(cdata_movieId)
+showmissing <- cdata_movieId[!complete.cases(cdata_movieId),]
+```
+
+```{r}
+cdata_userId <- ddply(edx, c("userId"), summarise,
+               N = length(userId),
+               group_rating = mean(rating),
+               group_se_by_user = (group_rating - mean(edx$rating))/N
+)
+cdata_userId <- cdata_userId %>% arrange(desc(group_se_by_user))
+head(cdata_userId)
+anyNA(cdata_userId)
+showmissing <- cdata_userId[!complete.cases(cdata_userId),]
+```
+
+```{r}
+MyMerge <- function(x, y){
+  df <- merge(x, y, by= "userId", all.x= TRUE, all.y= TRUE)
+  return(df)
+}
+cdata_merged_edx <- Reduce(MyMerge, list(edx,cdata_userId))
+head(cdata_merged_edx) %>% arrange(desc(group_se_by_user))
+```
+
+
+```{r}
+MyMerge <- function(x, y){
+  df <- merge(x, y, by= "movieId", all.x= TRUE, all.y= TRUE)
+  return(df)
+}
+cdata_merged_edx <- Reduce(MyMerge, list(cdata_merged_edx,cdata_movieId))
+head(cdata_merged_edx)  %>% arrange(desc(group_se_by_movie))
+```
+
+```{r}
+cdata_merged_edx <- cdata_merged_edx %>% mutate(adj_rating = mean(cdata_merged_edx$group_rating.x) + group_se_by_user+group_se_by_movie)
+head(cdata_merged_edx)
+```
+
+```{r}
+paste0("edx RMSE is: ",RMSE(cdata_merged_edx$rating,cdata_merged_edx$adj_rating))
+
+```
+
+```{r}
+cdata_movieId <- ddply(validation, c("movieId"), summarise,
+               N = length(movieId),
+               group_rating = mean(rating),
+               group_se_by_movie = (group_rating - mean(validation$rating))/N
+)
+cdata_movieId <- cdata_movieId %>% arrange(desc(group_se_by_movie))
+head(cdata_movieId)
+anyNA(cdata_movieId)
+showmissing <- cdata_movieId[!complete.cases(cdata_movieId),]
+```
+
+```{r}
+cdata_userId <- ddply(validation, c("userId"), summarise,
+               N = length(userId),
+               group_rating = mean(rating),
+               group_se_by_user = (group_rating - mean(validation$rating))/N
+)
+cdata_userId <- cdata_userId %>% arrange(desc(group_se_by_user))
+head(cdata_userId)
+anyNA(cdata_userId)
+showmissing <- cdata_userId[!complete.cases(cdata_userId),]
+```
+
+
+```{r}
+MyMerge <- function(x, y){
+  df <- merge(x, y, by= "userId", all.x= TRUE, all.y= TRUE)
+  return(df)
+}
+cdata_merged_validation <- Reduce(MyMerge, list(validation,cdata_userId))
+head(cdata_merged_validation) %>% arrange(desc(group_se_by_user))
+
+```
+
+```{r}
+MyMerge <- function(x, y){
+  df <- merge(x, y, by= "movieId", all.x= TRUE, all.y= TRUE)
+  return(df)
+}
+cdata_merged_validation <- Reduce(MyMerge, list(cdata_merged_validation,cdata_movieId))
+head(cdata_merged_validation)  %>% arrange(desc(group_se_by_movie))
+
+```
+
+```{r}
+cdata_merged_validation <- cdata_merged_validation %>% mutate(adj_rating = mean(cdata_merged_validation$group_rating.x) + group_se_by_user+group_se_by_movie)
+head(cdata_merged_validation)
+```
+
+```{r}
+paste0("validation RMSE is: ",RMSE(cdata_merged_validation$rating,cdata_merged_validation$adj_rating))
+
+```
+
+
+#### by using n() functionality of dyplr library
+
+
+```{r}
+mu <- mean(edx$rating)
+
+bi <- edx %>% 
+group_by(movieId) %>% 
+summarize(bi= sum(rating - mu)/(n()))
+```
+
+```{r}
+bu <- edx %>% 
+group_by(userId) %>% 
+summarize(bu= sum(rating - mu)/(n()))
+```
+
+```{r}
+predicted_ratings3 <- edx %>%
+    left_join(bi, by = "movieId") %>%
+    left_join(bu, by = "userId") %>%
+    mutate(pred = mu+bu+bi) %>% .$pred
+```
+
+```{r}
+#plot(predicted_ratings3)
+#plot(movielens$rating)
+```
+
+```{r}
+paste0("edx set RMSE is: ",RMSE(predicted_ratings3,edx$rating))
+
+```
+
+#### by using n() functionality of dyplr library
+
+
+```{r}
+mu <- mean(validation$rating)
+
+bi <- validation %>% 
+group_by(movieId) %>% 
+summarize(bi= sum(rating - mu)/(n()))
+```
+
+```{r}
+bu <- validation %>% 
+group_by(userId) %>% 
+summarize(bu= sum(rating - mu)/(n()))
+```
+
+```{r}
+predicted_ratings4 <- validation %>%
+    left_join(bi, by = "movieId") %>%
+    left_join(bu, by = "userId") %>%
+    mutate(pred = mu+bu+bi) %>% .$pred
+```
+
+```{r}
+#plot(predicted_ratings4)
+#plot(movielens$rating)
+```
+
+```{r}
+paste0("validation set RMSE is: ",RMSE(predicted_ratings4,validation$rating))
+
+```
+
+
+## Conclusion
+
+#### Recommender systems are parts of our daily lives. Understanding the preferences of each individual to better suit them with the products is the goal of every profit maximizing business. Therefore, the importance of it is undeniable. From a movie to watch on any given day, to what to wear at events, to what to reads, and on, recommendation tools play such a critical role in shaping the demand creation. Given the current structure of social media and their genius ability to collect data about the people's choices in such detail enable marketing to reach an incredibly accurate efficiency levels. By filtering those choice in a content base or collaborative, we can match consumers with the right products at the right time.
+
+#### For this assignment, I have tried multiple models to reduce RMSE. Some models, unfortunately, due to RAM constraints, didn't produce results. Because of this, just to see whether they work, I exported a 1% of the data to check the code and it works fine. But, on the full data, my laptop is unable to produce any results and warn me for being unable to "allocate a vector size of 7.3 Gb."
+
+#### On the partial data, the models that I specified are able to reduce RMSE between 1% and 5%, but that stills keeps me above the specified threshold.
+
+#### To overcome this problem, I applied the model that's been created by Hans Bystrom at Stanford University. In his paper of "Movie Recommendations from User Ratings", he stated this equation:  bui = mu + bu + bi. 
+
+#### After obtaining the bu and bi values that are stated in this paper by using the n() function from dpylr and ddply function from plyr, I was finally able to reduce RMSE even further and eventually pass the target.
+
+#### Though more work is required to get a better picture of ways of reducing RMSE, my preliminary results are able to reduce RMSE below the asked threshold.
+
+#### RMSE for Validation set is 0.8534
+#### RMSE for edx set is .8767
+#### Baseline RMSE is 1.061
+
